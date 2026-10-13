@@ -288,7 +288,7 @@ export function renderElements(elements: h[], selfIds: string[], sink?: MediaSpe
       case 'at': {
         const id = String(node.attrs.id ?? '')
         if (node.attrs.type === 'all') return '@全体成员'
-        if (selfIds.includes(id)) { mentionsSelf = true; return '@橘波特' }
+        if (selfIds.includes(id)) { mentionsSelf = true; return '[@我]' }
         return `@${node.attrs.name ?? id}`
       }
       case 'quote': {
@@ -493,8 +493,15 @@ export class CrossgramClient extends SatoriClient {
     })
     const text = (message.parts as any[]).map((part) => {
       if (part.type === 'text') {
-        if ((part.entities ?? []).some((e: any) => e.type === 'mention' && e.userId === this.selfId)) mentionsSelf = true
-        return part.text
+        // Rewrite mention-of-self spans to a fixed marker: the raw span is the bot's own
+        // nickname (e.g. "@sudo rm -rf /") and reads like a shell command to the model.
+        let text: string = part.text
+        for (const e of [...(part.entities ?? [])].sort((x: any, y: any) => y.offset - x.offset) as any[]) {
+          if (e.type !== 'mention' || e.userId !== this.selfId) continue
+          mentionsSelf = true
+          text = text.slice(0, e.offset) + '[@我]' + text.slice(e.offset + e.length)
+        }
+        return text
       }
       if (part.type === 'media') {
         const kind = part.kind === 'image' ? 'image' : 'file'
