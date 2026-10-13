@@ -1,9 +1,10 @@
 node_modules/
 
 # build output (`node build.mjs`, also run by `npm install` via the prepare script)
-lib/
+packages/*/lib/
 
-# resolved on install; this is a plugin, not an application
+# resolved per install (the deploy copy installs with npm); the workspace lock
+# (pnpm-lock.yaml) is committed instead
 package-lock.json
 
 # logs / editor / OS noise
