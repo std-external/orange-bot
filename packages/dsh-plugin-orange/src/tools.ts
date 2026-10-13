@@ -125,10 +125,9 @@ export function registerTools(ctx: Context, getBot: () => OrangeBot | undefined)
       const { pieces, missing } = splitMentions(out, candidates)
       const targets: MentionPiece[] = []
       const mentioned = new Set(pieces.flatMap((piece) => piece.type === 'at' ? [piece.id] : []))
-      const reply = b.replyMention(conv, quotedHere)
-      if (reply && out && !mentioned.has(reply.userId!)) {
-        targets.push({ type: 'at', id: reply.userId!, ...(reply.name ? { name: reply.name } : {}) }, { type: 'text', text: ' ' })
-      }
+      // No automatic @ of the person we reply to: the mention path is the most
+      // fragile part of the send pipeline; a quote alone identifies the target.
+      // const reply = b.replyMention(conv, quotedHere) — dropped on purpose.
       for (const raw of args.at ?? []) {
         const hit = resolveMention(candidates, String(raw))
         const id = hit?.id ?? String(raw)
