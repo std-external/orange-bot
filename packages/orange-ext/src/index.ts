@@ -122,7 +122,9 @@ export function apply(ctx: Context, config: Config) {
   const render = async (platform: IMPlatform, session: PlatformSession, message: IMMessage | IMMessageSnapshot) => {
     const parts: any[] = []
     for (const part of message.content.parts as IMMessagePart[]) {
-      if (part.type === 'text') parts.push({ type: 'text', text: part.text, entities: part.entities })
+      // ponytail: consumers see one id space — the numeric QQ id. The raw NT uid
+      // stays internal to the bridge; without a numeric mapping the uid passes through as-is.
+      if (part.type === 'text') parts.push({ type: 'text', text: part.text, entities: part.entities?.map((entity) => entity.type === 'mention' && entity.numericId ? { ...entity, userId: entity.numericId } : entity) })
       else if (part.type === 'media') {
         parts.push({
           type: 'media', kind: part.media.kind, name: part.media.name, mimeType: part.media.mimeType,
@@ -137,10 +139,13 @@ export function apply(ctx: Context, config: Config) {
     }
     const sender = message.sender
     const senderAvatar = sender?.avatar ? await mediaUrl(platform, session, sender.avatar) : undefined
+    // ponytail: numeric QQ id first (matches exporter's satoriUser and admin
+    // allowlists); the opaque NT uid only when the bridge has no mapping.
+    const senderNumeric = typeof (sender as any)?.metadata?.qq === 'string' && (sender as any).metadata.qq ? (sender as any).metadata.qq : undefined
     return {
       id: message.id,
       senderAvatar,
-      senderId: message.senderId,
+      senderId: senderNumeric ?? message.senderId,
       senderName: sender ? [sender.firstName, sender.lastName].filter(Boolean).join(' ') || message.senderId : message.senderId,
       senderTitle: message.senderTitle,
       timestamp: message.timestamp * 1000,
@@ -271,7 +276,10 @@ export function apply(ctx: Context, config: Config) {
         // opaque id makes every send fail with "login not found".
         socket.send(JSON.stringify({
           type: 'ready',
-          selfId: session.userId,
+          // ponytail: prefer the numeric QQ id for selfId too — senders and
+          // mentions are numeric-first (below), so @-detection and self-echo
+          // matching keep working on one id space; opaque uid stays as fallback.
+          selfId: typeof session.metadata?.qq === 'string' && session.metadata.qq ? session.metadata.qq : session.userId,
           loginId: typeof session.metadata?.qq === 'string' && session.metadata.qq ? session.metadata.qq : session.userId,
         }))
       } catch { socket.close(4000, 'bad frame') }
