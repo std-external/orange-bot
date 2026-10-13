@@ -467,6 +467,8 @@ export class QQOfficialClient extends SatoriClient {
 export class CrossgramClient extends SatoriClient {
   /** userbot account sends prefix; the account is shared with a human. */
   static readonly PREFIX = '🤖 '
+  /** Effective prefix; the bot refreshes it from settings before each send. */
+  sendPrefix = CrossgramClient.PREFIX
 
   protected eventsUrl(): string { return this.cfg.endpoint.replace(/^http/, 'ws') + '/orange/events' }
   protected identify(ws: WebSocket): void { ws.send(JSON.stringify({ token: this.cfg.token })) }
@@ -523,7 +525,7 @@ export class CrossgramClient extends SatoriClient {
       switch (part.type) {
         case 'text': case 'markdown': {
           // userbot has no markdown: degrade to plain text
-          const text = (prefixed ? '' : CrossgramClient.PREFIX) + (part.type === 'markdown' ? stripMarkdown(part.text ?? '') : (part.text ?? ''))
+          const text = (prefixed ? '' : this.sendPrefix) + (part.type === 'markdown' ? stripMarkdown(part.text ?? '') : (part.text ?? ''))
           prefixed = true
           return h.escape(text)
         }
@@ -540,7 +542,7 @@ export class CrossgramClient extends SatoriClient {
     }).join('')
     // A sticker-only reply stays a bare 表情: prepending the 🤖 marker would turn
     // it into a text message with a picture attached, which is not the same thing.
-    const finalContent = prefixed || parts.some((p) => p.type === 'sticker') ? content : h.escape(CrossgramClient.PREFIX.trim()) + content
+    const finalContent = prefixed || !this.sendPrefix || parts.some((p) => p.type === 'sticker') ? content : h.escape(this.sendPrefix.trim()) + content
     const result = await this.api<{ id: string }[]>('message.create', { channel_id: channelId, content: finalContent })
     return (result ?? []).map((r) => r.id)
   }

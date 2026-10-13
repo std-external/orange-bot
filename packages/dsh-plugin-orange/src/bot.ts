@@ -665,7 +665,7 @@ export class OrangeBot {
       else if (isAdmin && m.self && AI_COMMAND.test(cmdText)) trigger = 'command'
     } else if (AI_COMMAND.test(cmdText) && (settings.whitelisted || isAdmin)) {
       trigger = 'command'
-    } else if (m.platform === 'qq' && m.mentionsSelf && settings.whitelisted) {
+    } else if (m.mentionsSelf && settings.whitelisted && (m.platform === 'qq' || this.store.settings().cgMentionTrigger)) {
       // userbot @ is the admin's own account, so only the official bot treats @ as a trigger
       trigger = 'mention'
     } else if (repliedToBot && settings.whitelisted && !m.self) {
@@ -1289,7 +1289,8 @@ export class OrangeBot {
     const toSeq = lastSeq
     // Transient gateway failures (502/503/429, network hiccups) are retried inside
     // chat(), with the attempt logged instead of reported.
-    const result = await chat(this.config.llm, [{ role: 'system', content: system }, { role: 'user', content: transcript }], {
+    const classifierLlm = { ...this.config.llm, model: this.config.llm.classifierModel ?? this.config.llm.model }
+    const result = await chat(classifierLlm, [{ role: 'system', content: system }, { role: 'user', content: transcript }], {
       json: true,
       maxTokens: 2000,
       onRetry: ({ attempt, error, delayMs }) => this.log.warn(`classifier ${conv} retry ${attempt} in ${delayMs}ms: ${error.message}`),
@@ -1299,7 +1300,7 @@ export class OrangeBot {
     // A direct trigger may have claimed newer messages while this call was in
     // flight: never rewind past them, or those messages get judged twice.
     state.classifiedSeq = Math.max(state.classifiedSeq, toSeq)
-    this.store.recordLlm({ kind: 'classifier', model: this.config.llm.model, input: result.input, cached: result.cached, output: result.output, conv })
+    this.store.recordLlm({ kind: 'classifier', model: classifierLlm.model, input: result.input, cached: result.cached, output: result.output, conv })
     const verdict = parseJsonLoose<{ wake: boolean, kind: string, reason: string, note: string | null, tags?: { user: string, tag: string, on: boolean }[] }>(result.text)
     if (!verdict) { this.log.warn(`classifier unparsable for ${conv}: ${result.text.slice(0, 300)}`); return }
     this.store.recordClassification({ conv, fromSeq: firstNew, toSeq, wake: !!verdict.wake, kind: verdict.kind ?? 'none', reason: verdict.reason ?? '' })
@@ -1356,7 +1357,7 @@ export class OrangeBot {
 
   /** Decide whether to engage at all; a blocked message never enters any session. */
   private async screenedWake(conv: string, trigger: TriggerKind, message: InboundMessage, reason?: string): Promise<void> {
-    const verdict = await screenTrigger(this.config.llm, {
+    const verdict = await screenTrigger({ ...this.config.llm, model: this.config.llm.classifierModel ?? this.config.llm.model }, {
       text: message.text,
       senderName: message.senderName,
       replyToBot: message.replyTo ? this.store.byId(message.conv, message.replyTo)?.fromBot === true : false,
@@ -1943,6 +1944,7 @@ export class OrangeBot {
         const hasSticker = parts.some((p) => p.type === 'sticker')
         if (sentText || hasSticker) this.pendingSelfTexts.push({ conv, text: sentText, sticker: hasSticker, label: hasSticker ? stickerText : undefined, ts: Date.now() })
       }
+      this.cg.sendPrefix = this.store.settings().botEmojiPrefix ? CrossgramClient.PREFIX : ''
       const ids = await this.client(platform).send(channelId, direct, resolved, opts.replyTo ?? state.lastInbound)
       this.store.recordResponse({ ...record, delivered: true })
       // record our own outgoing message for qq (koishi does not echo it back)
@@ -2261,7 +2263,7 @@ export function formatLine(m: StoredMessage, tag?: string, note?: string): strin
   const time = new Date(m.ts).toLocaleTimeString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }).slice(0, 5)
   const reply = m.replyTo ? ` ↩${m.replyTo.slice(-6)}` : ''
   const who = m.fromBot ? '橘波特(你)' : `${m.senderName}${tag ? `{${tag}}` : ''}`
-  return `#${m.seq} ${time} ${who}(${m.senderId.slice(-8)})${reply}${note ? ` ${note}` : ''}: ${m.text.replace(/\n/g, '\n  ')}`
+  return `#${m.seq} ${time} ${who}(${m.senderId})${reply}${note ? ` ${note}` : ''}: ${m.text.replace(/\n/g, '\n  ')}`
 }
 
 /** Cache key for one person's role in one conversation. */

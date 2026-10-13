@@ -16,7 +16,8 @@ export interface Config {
   workspace: string
   koishi: SatoriEndpoint
   crossgram: SatoriEndpoint
-  llm: { baseURL: string, apiKey: string, model: string, provider: string, agentModel: string }
+  /** classifierModel overrides llm.model for the wake classifier and the inbound screen only. */
+  llm: { baseURL: string, apiKey: string, model: string, classifierModel?: string, provider: string, agentModel: string }
   /**
    * The bot's masters, as `platform:id` keys (`qq:<user_openid>` for the official
    * bot, `cg:<uid>` for the userbot). This is the only source of authority: group
@@ -165,6 +166,12 @@ export interface RuntimeSettings {
   proactivePerHour: number
   /** Global kill switch for classifier-driven participation. */
   classifierEnabled: boolean
+  /** Whether @-mentions wake the agent on the userbot (cg) side. The official
+   *  bot side always treats @ as a trigger; off by default upstream because a
+   *  shared userbot account cannot tell an @ from the admin talking to himself. */
+  cgMentionTrigger: boolean
+  /** Whether userbot sends carry the 🤖 prefix marker (shared-account disambiguation). */
+  botEmojiPrefix: boolean
   /** Session idle reset (ms). */
   sessionIdleMs: number
   /** Triggers landing within this window (ms) merge into one agent turn; 0 = no waiting. */
@@ -249,6 +256,8 @@ export const DEFAULT_SETTINGS: RuntimeSettings = {
   ],
   proactivePerHour: 6,
   classifierEnabled: true,
+  cgMentionTrigger: true,
+  botEmojiPrefix: false,
   sessionIdleMs: 2 * 3600_000,
   wakeMergeMs: 2000,
   personaExtra: '',

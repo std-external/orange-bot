@@ -185,6 +185,8 @@ export function GlobalSettings() {
             <section className={css.section}><h4>行为</h4>
               <div className={css.card}>
                 <Field label="分类器旁听" hint="总开关；关闭后只响应 @ / /ai / 回复"><Switch label="分类器" checked={s.classifierEnabled} onChange={(v) => setS({ ...s, classifierEnabled: v })} /></Field>
+                <Field label="接受 @ 唤醒（userbot 侧）" hint="开启后群里 @ 机器人会直接唤醒 agent；官方 bot 侧不受此开关影响"><Switch label="@" checked={s.cgMentionTrigger} onChange={(v) => setS({ ...s, cgMentionTrigger: v })} /></Field>
+                <Field label="🤖 发送前缀" hint="userbot 发的消息带 🤖 前缀（共号时区分人机）；独立机器人号建议关闭"><Switch label="前缀" checked={s.botEmojiPrefix} onChange={(v) => setS({ ...s, botEmojiPrefix: v })} /></Field>
                 <Field label="每群每小时主动发言上限" hint="接话不计入"><input className={css.input} style={{ width: 90 }} type="number" min={0} value={s.proactivePerHour} onChange={(e) => setS({ ...s, proactivePerHour: Number(e.target.value) })} /></Field>
                 <Field label="session 空闲重置（分钟）" hint="超时后下次触发新开 session"><input className={css.input} style={{ width: 90 }} type="number" min={5} value={Math.round(s.sessionIdleMs / 60000)} onChange={(e) => setS({ ...s, sessionIdleMs: Number(e.target.value) * 60000 })} /></Field>
                 <Field label="消息合并窗口（毫秒）" hint="窗口内的 @ / 回复会合成一条消息发给 agent；agent 正在忙时也会等它说完再一起发"><input className={css.input} style={{ width: 90 }} type="number" min={0} step={100} value={s.wakeMergeMs ?? 2000} onChange={(e) => setS({ ...s, wakeMergeMs: Number(e.target.value) })} /></Field>
