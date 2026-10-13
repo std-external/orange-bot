@@ -1,0 +1,13 @@
+node_modules/
+
+# build output (`node build.mjs`, also run by `npm install` via the prepare script)
+lib/
+
+# resolved on install; this is a plugin, not an application
+package-lock.json
+
+# logs / editor / OS noise
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db

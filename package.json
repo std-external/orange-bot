@@ -1,0 +1,85 @@
+{
+  "name": "dsh-plugin-orange",
+  "version": "0.1.0",
+  "private": true,
+  "description": "橘波特 (Orange): a QQ group chat bot for DeepSeek Harness. Satori bridge (official QQ bot via koishi + userbot via crossgram), message store, trigger merging and classifier, chat agent + background task agents, agent tools, and a Web panel.",
+  "license": "MIT",
+  "author": "MicroBlock (https://github.com/std-microblock)",
+  "homepage": "https://github.com/std-microblock/dsh-plugin-orange#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/std-microblock/dsh-plugin-orange.git"
+  },
+  "bugs": {
+    "url": "https://github.com/std-microblock/dsh-plugin-orange/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "qq",
+    "qqbot",
+    "satori",
+    "koishi",
+    "crossgram",
+    "chatbot"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./tools": "./lib/tools.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "prepare": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/schemastery": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/dsh-llm": "*"
+  },
+  "dependencies": {
+    "@satorijs/element": "^3.2.0",
+    "ws": "^8.18.3",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.25.10",
+    "lucide-react": "^1.52.0",
+    "typescript": "^7.0.2"
+  }
+}

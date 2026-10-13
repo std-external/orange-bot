@@ -1,0 +1,7 @@
+# The bot runs on Linux and is developed on Windows; keep the checkout LF everywhere
+# so a cloned tree, the build output and the deployed tree are byte-identical.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
