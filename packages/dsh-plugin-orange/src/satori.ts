@@ -595,14 +595,41 @@ function stickerElement(sticker: OutboundSticker): any {
   })
 }
 
-/** Markdown -> plain text for platforms without markdown (keep link targets). */
+/**
+ * The one markdown construct a plain-text send ruins: `[文字](链接)` written out as `文字 链接`.
+ *
+ * Split out because it is needed on a markdown send too (see the `say` tool): a platform that
+ * carries markdown is still read by clients that draw the source instead of rendering it — the
+ * 2026-10-15 report showed the group `[PR #91](https://github.com/std-microblock/CeleMod/pull/91)`
+ * — while `文字 链接` is clickable in every client, markdown or not. Keeping it in one place means
+ * `stripMarkdown` and the send path can never disagree about what a link becomes.
+ */
+export function plainLinks(md: string): string {
+  return String(md ?? '')
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => label === url ? url : `${label} ${url}`)
+}
+
+/**
+ * Markdown -> plain text for platforms without markdown (keep link targets).
+ *
+ * Every construct the platform's own markdown would have rendered has to be written out here, or
+ * the group reads the source: links (`plainLinks`), fenced and inline code, bold/italic/
+ * underscore/strikethrough, headings, blockquotes, list bullets, horizontal rules. Leftovers are
+ * what a rewrite that kept `#42372 …` or `- 一条` puts in front of the group.
+ */
 export function stripMarkdown(md: string): string {
-  return md
+  return plainLinks(md)
     .replace(/```[a-z]*\n?([\s\S]*?)```/g, '$1')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1$2')
-    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, '$1')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => label === url ? url : `${label} ${url}`)
+    .replace(/(^|[^_\w])_([^_]+)_/g, '$1$2')
+    .replace(/~~([^~]+)~~/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>+\s?/gm, '')
+    .replace(/^\s{0,3}[-*+]\s+/gm, '')
+    .replace(/^\s{0,3}\d{1,9}[.)]\s+/gm, '')
+    .replace(/^\s{0,3}(?:[-*_]\s*){3,}$/gm, '')
 }

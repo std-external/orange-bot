@@ -8,7 +8,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { OrangeBot } from './bot.ts'
 import { formatLine, projectTerms } from './bot.ts'
-import type { MediaRef, OutboundPart } from './satori.ts'
+import { plainLinks, stripMarkdown, type MediaRef, type OutboundPart } from './satori.ts'
 import { markdownDropsQuote, quoteBlockquote } from './qq.ts'
 import { mentionBody, readableMentions, resolveMention, splitMentions, type MentionPiece } from './mentions.ts'
 
@@ -107,7 +107,20 @@ export function registerTools(ctx: Context, getBot: () => OrangeBot | undefined)
       // platform renders markdown is decided here, not by the agent.
       const render = typeof args.markdown === 'boolean' ? args.markdown : b.rendersMarkdown(conv)
       const styled = body ? await b.stylize(conv, body, MAX_CHARS, render) : { text: '', applied: false, subs: [] as string[], note: '' }
-      const out = styled.text
+      // A platform without markdown has to receive plain text, and the send path cannot be trusted
+      // to do it: `CrossgramClient.send` degrades a `markdown` part (satori.ts), but `mentionBody`
+      // writes the userbot's body as plain `text` parts (mentions.ts:155), so the body went out
+      // exactly as written. That left the degradation to the rewrite prompt alone, and every
+      // rewrite that was refused (`acceptStyled`) or never ran put the agent's `[文字](链接)` in the
+      // group verbatim — the 2026-10-15 report, `修了 [PR #91](https://…) 等合并就好`. Degrading
+      // here, once, makes it independent of which part shape the mention path picks.
+      //
+      // A link is written out on a markdown send too: `[文字](链接)` is the one construct a client
+      // that draws the source instead of rendering it hands back as source (`[PR #91](https://…)`,
+      // 2026-10-15), while `文字 链接` is clickable in every client. An explicit `markdown: true`
+      // on the call is the agent asking for the raw form, so it keeps it.
+      const out = !render ? stripMarkdown(styled.text)
+        : args.markdown === true ? styled.text : plainLinks(styled.text)
       if (out.replace(/\]\([^)]*\)/g, ']').length > MAX_CHARS) throw new Error(`the styled wording came out over ${MAX_CHARS} chars (${out.length}). Say the same thing shorter.`)
       // A quote cannot ride along with a markdown body on the official bot (QQ
       // then draws the body twice — see qq.ts), so there the quoted line is
