@@ -33,6 +33,30 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass   # 只在当前窗�
   --app-id 1020xxxx --app-secret <AppSecret> --bot-token <Token>
 ```
 
+## 离线安装（网络差 / 没有 git）
+
+```bash
+./scripts/deploy.sh --go --source ~/Downloads/orange-bot-main.zip
+./scripts/deploy.sh --go --source ~/src/orange-bot/          # 目录也行
+./scripts/deploy.sh --yes --no-clone --source ~/src.tgz ...   # 明确不碰网络
+```
+
+- 认目录、`.zip`、`.tar.gz` / `.tgz` / `.tar`；解压前先看清单，**绝对路径或 `..` 条目直接拒绝**（防 zip-slip）；
+- **不覆盖已有的 `--dir`**：目标非空就报错，让你换目录；
+- 离线模式没有 `.git`：以后更新就再拿一份新压缩包，解到新目录、`--dir` 指过去（脚本不打 `git pull`）。
+
+## 装进已有容器（`--container`）
+
+```bash
+./scripts/deploy.sh --go --container my-koishi
+```
+
+先 `docker inspect` 探镜像 / 工作目录 / 用户，确认容器里有 Node（没有就提示换 `node:24-bookworm`），
+再 `docker exec` 装 koishi + `@satorijs/adapter-qq` + `@koishijs/plugin-server-satori`，
+把桥插件拷进 `/opt/orange/koishi-plugin-orange-bridge`，配置写到 `/opt/orange/koishi.yml`
+（**已存在先备份**，原文件不原地覆盖）。已经装过就跳过；**不 stop / rm 任何容器**。
+它会检查容器有没有把 koishi 数据目录挂出来，没挂会提醒你（不然重启就丢）。
+
 ## 脚本做了什么
 
 1. 检查 Node（`^22.19 || >=24`），不满足只提示怎么装，不替你装；
@@ -83,6 +107,10 @@ dsh web                          # 终端 B：日志里有带 token 的面板地
 - **官方 bot 主动消息额度**：主动推送 2025-04-21 起停止提供，机器人只能被动回；群聊被动窗口 5 分钟、同一条消息最多回 5 次，超了就是 `msg limit exceed`。
 - **Node 太老 / 找不到 dsh**：Node 升到 24；`npm i -g` 后 `dsh` 不在 PATH 就把 npm 的 bin 目录加进去。
 - **没有 pnpm**：脚本会用 corepack 开，再不行 `npm i -g pnpm`。
+- **`--source` 报「已存在且非空」**：脚本不覆盖已有目录，换 `--dir <新目录>` 或先备份移走。
+- **`--source` 报「有绝对路径或 .. 条目」**：压缩包不干净，重新从 GitHub 下载，别用第三方打包。
+- **`--container` 报 `容器里没有 node`**：那个镜像里没有 Node；换 `node:24-bookworm` 重建，或走 bare 模式。
+- **容器重启配置没了**：koishi 的数据目录没挂卷，重建时加 `-v ...:/koishi`。
 
 ## 没覆盖 / 没验证
 
