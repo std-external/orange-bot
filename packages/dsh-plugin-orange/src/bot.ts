@@ -19,7 +19,7 @@ import { humanizeAtMarkup } from './qq.ts'
 import { screenTrigger } from './privacy.ts'
 import { CHAT_PERSONA, TASK_PERSONA, classifierSystem, projectBrief, projectLine, stickerPrompt, stylePolishSystem, stylePrompt } from './prompts.ts'
 import { acceptStyled, pickSubStyles } from './style.ts'
-import { REPEAT_MIN_CHARS, REPEAT_WINDOW_MS, answerKey, repeatSendError, sameAnswer } from './repeat.ts'
+import { REPEAT_MIN_CHARS, REPEAT_WINDOW_MS, answerKey, repeatSendError, sameAnswer, sendUnknownError } from './repeat.ts'
 import { MessageSegments, StickerService, segmentWantsSticker } from './stickers.ts'
 import type { MessageSegment } from './stickers.ts'
 import { createLog, type Log } from './log.ts'
@@ -1982,7 +1982,9 @@ export class OrangeBot {
       return { ids, dryRun: false }
     } catch (error) {
       this.store.recordResponse({ ...record, error: String((error as Error).message ?? error) })
-      throw error
+      // 结果未知：桥可能在平台收下这条之后才失败（见 repeat.ts），所以给 agent 的错误里要写明
+      // 「别原样重发」——否则它下一轮做的就是再发一遍同一句话。
+      throw new Error(`${(error as Error).message ?? error}（${sendUnknownError()}）`)
     }
   }
 

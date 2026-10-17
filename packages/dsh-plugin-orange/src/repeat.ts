@@ -73,3 +73,14 @@ export function repeatSendError(secondsAgo: number): string {
   const ago = secondsAgo < 90 ? `${Math.max(1, secondsAgo)} 秒前` : `${Math.round(secondsAgo / 60)} 分钟前`
   return `这条已经发过了（${ago}，一样的意思），群里看到的就是它——别重发。刚才那次报错/超时的那条，多半就是这个已经出去的消息：不要用同一句话再试一次，去看一眼 chat_history 或说点新东西；没什么要补的就别说话。`
 }
+
+/**
+ * The retry wording for a send that *failed*: on this bridge a failure does not mean the message
+ * did not go out (see the top of this file), so the error the agent reads has to say so. Without it
+ * the agent does the obvious thing — calls `say` again with the same sentence — and that is half of
+ * how the 2026-10-17 repeat happened; the guard then refuses the retry, and this wording is what
+ * keeps the agent from treating that refusal as a problem to work around.
+ */
+export function sendUnknownError(): string {
+  return '结果未知：这条可能已经发出去了。别原样重发同一句话——先看一眼 chat_history 确认群里有没有，或者干脆说点别的；3 分钟内的重复回答会被直接拦下。'
+}
