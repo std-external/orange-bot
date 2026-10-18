@@ -65,6 +65,19 @@ ok('a task left on "running" without a live agent is listed', () => {
   assert.match(text, /未在执行 · 最后心跳 2小时前/, 'a stale row is not sold as executing')
 })
 
+// --- 2b. the second sighting (2026-10-18): two running tasks, workers not live --
+// In the group `/ai.bg` answered "本群现在没有后台任务在跑" while two tasks were
+// genuinely running. Both rows say "running"; neither worker was in a turn at the
+// moment of the report (they were between steps / waiting on their own job).
+const tower = task(GROUP, '爬塔 v2', 'orange-task-tower', 'running', 30 * 60_000)
+const debug = task(GROUP, '草莓酱排障', 'orange-task-strawberry', 'running', 30 * 60_000)
+ok('two running tasks with no live worker are both listed', () => {
+  const text = bot.backgroundReport(GROUP)
+  assert.notEqual(text, '本群现在没有后台任务在跑')
+  assert.ok(text.includes(`#${tower} 爬塔 v2`), 'the first task must be listed')
+  assert.ok(text.includes(`#${debug} 草莓酱排障`), 'the second task must be listed')
+})
+
 // --- 3. a live task keeps its precise "已跑" and is not listed twice -------------
 agents.push({ status: 'running', session: { id: 'orange-task-live' } })
 const live = task(GROUP, '正在跑的任务', 'orange-task-live', 'running', HOUR)
@@ -95,7 +108,7 @@ ok('the private (global) report names the group each task came from', () => {
 // --- 6. nothing alive: the old short answer keeps working ------------------------
 ok('an empty board still says so', () => {
   agents.length = 0 // the workers have exited their turns
-  for (const id of [sleeping, stale, live, done, elsewhere]) bot.store.updateTask(id, { status: 'done' })
+  for (const id of [sleeping, stale, tower, debug, live, done, elsewhere]) bot.store.updateTask(id, { status: 'done' })
   assert.equal(bot.backgroundReport(GROUP), '本群现在没有后台任务在跑')
 })
 
